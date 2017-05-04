@@ -41,15 +41,15 @@ public:
 		}
 	}
 	virtual void update(void);
-	void gain(unsigned int output, unsigned int channel, float gain) {
-		if (output >= 16) return;
+	void gain(unsigned int bus, unsigned int channel, float gain) {
+		if (bus >= 16) return;
 		if (channel >= 16) return;
 		if (gain > 32767.0f) gain = 32767.0f;
 		else if (gain < -32767.0f) gain = -32767.0f;
-		multiplier[output][channel] = gain * 65536.0f; // TODO: proper roundoff?
+		multiplier[bus][channel] = gain * 65536.0f; // TODO: proper roundoff?
 	}
 private:
-	int32_t multiplier[16][16];		//For each output bus n, there are x inputs -> multiplier[n][x]
+	int32_t multiplier[16][16];		//For each bus n, there are x inputs -> multiplier[n][x]
 	audio_block_t *inputQueueArray[16];
 
 #elif defined(KINETISL)
@@ -61,15 +61,15 @@ public:
 		}
 	}
 	virtual void update(void);
-	void gain(unsigned int output,unsigned int channel, float gain) {
-		if (output >= 16) return;
+	void gain(unsigned int bus,unsigned int channel, float gain) {
+		if (bus >= 16) return;
 		if (channel >= 16) return;
 		if (gain > 127.0f) gain = 127.0f;
 		else if (gain < -127.0f) gain = -127.0f;
-		multiplier[output][channel] = gain * 256.0f; // TODO: proper roundoff?
+		multiplier[bus][channel] = gain * 256.0f; // TODO: proper roundoff?
 	}
 private:
-	int16_t multiplier[16][16];		//For each output bus n, there are x inputs -> multiplier[n][x]
+	int16_t multiplier[16][16];		//For each bus n, there are x inputs -> multiplier[n][x]
 	audio_block_t *inputQueueArray[16];
 #endif
 };

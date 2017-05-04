@@ -108,25 +108,29 @@ void AudioMixerCrosspoint16::update(void)
 {
 	audio_block_t *in, *out=NULL;
 	unsigned int channel;
+	unsigned int bus = 0;
 
-	for (channel=0; channel < 16; channel++) {
-		if (!out) {
-			out = receiveWritable(channel);
-			if (out) {
-				int32_t mult = multiplier[0][channel];			//Hardcoded to output bus 0 for now
-				if (mult != MULTI_UNITYGAIN) applyGain(out->data, mult);
-			}
-		} else {
-			in = receiveReadOnly(channel);
-			if (in) {
-				applyGainThenAdd(out->data, in->data, multiplier[0][channel]); //Hardcoded to output bus 0 for now
-				release(in);
+	for(bus=0; bus < 16; bus++) {
+		out=NULL;
+		for (channel=0; channel < 16; channel++) {
+			if (!out) {
+				out = receiveWritable(channel);
+				if (out) {
+					int32_t mult = multiplier[bus][channel];
+					if (mult != MULTI_UNITYGAIN) applyGain(out->data, mult);
+				}
+			} else {
+				in = receiveReadOnly(channel);
+				if (in) {
+					applyGainThenAdd(out->data, in->data, multiplier[bus][channel]);
+					release(in);
+				}
 			}
 		}
-	}
-	if (out) {
-		transmit(out);
-		release(out);
+		if (out) {
+			transmit(out, bus);
+			release(out);
+		}
 	}
 }
 
