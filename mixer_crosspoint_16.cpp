@@ -106,31 +106,40 @@ static void applyGainThenAdd(int16_t *dst, const int16_t *src, int32_t mult)
 
 void AudioMixerCrosspoint16::update(void)
 {
-	audio_block_t *in, *out=NULL;
+	audio_block_t *in[16], *out=NULL;
 	unsigned int channel;
-	unsigned int bus = 0;
+	unsigned int bus;
+	unsigned int sample;
+	
+	//First get audio_blocks to all the input channels as readonly. 
+	//Readonly because we'll be using them multiple times so don't want to modify contents.
+	for (channel=0; channel < 16; channel++) {
+		in[channel] = receiveReadOnly(channel);
+	}
 
+	//Now crosspoint mix.
 	for(bus=0; bus < 16; bus++) {
-		out=NULL;
-		for (channel=0; channel < 16; channel++) {
-			if (!out) {
-				out = receiveWritable(channel);
-				if (out) {
-					int32_t mult = multiplier[bus][channel];
-					if (mult != MULTI_UNITYGAIN) applyGain(out->data, mult);
-				}
-			} else {
-				in = receiveReadOnly(channel);
-				if (in) {
-					applyGainThenAdd(out->data, in->data, multiplier[bus][channel]);
-					release(in);
+		out = allocate();		//get an audio_block that we'll sum the other channels to
+		for(sample=0; sample < AUDIO_BLOCK_SAMPLES; sample++){
+			out->data[sample] = 0;
+		}
+		//Using explicit loop instead of memset reduced CPU usage from 53% to 48.50%
+		//memset(out->data, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t)); 
+		if(out){
+			for (channel=0; channel < 16; channel++) {
+				if (in[channel]) {
+					applyGainThenAdd(out->data, in[channel]->data, multiplier[bus][channel]);	
 				}
 			}
-		}
-		if (out) {
 			transmit(out, bus);
 			release(out);
 		}
+	}
+	
+	//Now release all the input audio_blocks
+	for (channel=0; channel < 16; channel++) {
+		if(in[channel])
+			release(in[channel]);
 	}
 }
 
