@@ -1,6 +1,8 @@
 /* Audio Library for Teensy 3.X
  * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
  *
+ * Modified by Macaba
+ *
  * Development of this audio library was funded by PJRC.COM, LLC by sales of
  * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
  * open source software by purchasing Teensy or other PJRC products.
@@ -36,8 +38,11 @@ class AudioMixerCrosspoint16 : public AudioStream
 public:
 	AudioMixerCrosspoint16(void) : AudioStream(16, inputQueueArray) {
 		for (int i=0; i<16; i++) {
-			for(int j=0; j<16; j++)
-				multiplier[i][j] = 65536;
+			outputGains[i] = 1.0;
+			for(int j=0; j<16; j++) {
+				gains[i][j] = 1.0;
+				integerMultipliers[i][j] = 65536;
+			}
 		}
 	}
 	virtual void update(void);
@@ -46,18 +51,33 @@ public:
 		if (channel >= 16) return;
 		if (gain > 32767.0f) gain = 32767.0f;
 		else if (gain < -32767.0f) gain = -32767.0f;
-		multiplier[bus][channel] = gain * 65536.0f; // TODO: proper roundoff?
+		gains[bus][channel] = gain;
+		integerMultipliers[bus][channel] = gains[bus][channel] * outputGains[bus] * 65536.0f;
+	}
+	void outputGain(unsigned int bus, float gain) {
+		if (bus >= 16) return;
+		if (gain > 32767.0f) gain = 32767.0f;
+		else if (gain < -32767.0f) gain = -32767.0f;
+		outputGains[bus] = gain;
+		for (int i=0; i<16; i++) {
+			integerMultipliers[bus][i] = gains[bus][i] * outputGains[bus] * 65536.0f;
+		}
 	}
 private:
-	int32_t multiplier[16][16];		//For each bus n, there are x inputs -> multiplier[n][x]
+	float gains[16][16];					//For each bus n, there are x inputs -> gains[n][x]
+	float outputGains[16];					//For each bus, there is an output gain
+	int32_t integerMultipliers[16][16];		//Computed channel/bus gains with bus output gain mixed in
 	audio_block_t *inputQueueArray[16];
 
 #elif defined(KINETISL)
 public:
 	AudioMixerCrosspoint16(void) : AudioStream(16, inputQueueArray) {
 		for (int i=0; i<16; i++) {
-			for(int j=0; j<16; j++)
-				multiplier[i][j] = 256;
+			outputGains[i] = 1.0;
+			for(int j=0; j<16; j++) {
+				gains[i][j] = 1.0;
+				integerMultipliers[i][j] = 256
+			}
 		}
 	}
 	virtual void update(void);
@@ -66,11 +86,25 @@ public:
 		if (channel >= 16) return;
 		if (gain > 127.0f) gain = 127.0f;
 		else if (gain < -127.0f) gain = -127.0f;
-		multiplier[bus][channel] = gain * 256.0f; // TODO: proper roundoff?
+		gains[bus][channel] = gain;
+		integerMultipliers[bus][channel] = gains[bus][channel] * outputGains[bus] * 256.0f;
+	}
+	void outputGain(unsigned int bus, float gain) {
+		if (bus >= 16) return;
+		if (gain > 127.0f) gain = 127.0f;
+		else if (gain < -127.0f) gain = -127.0f;
+		outputGains[bus] = gain;
+		calculateIntegerMultipliers(bus);
+		for (int i=0; i<16; i++) {
+			integerMultipliers[bus][i] = gains[bus][i] * outputGains[bus] * 256.0f;
+		}
 	}
 private:
-	int16_t multiplier[16][16];		//For each bus n, there are x inputs -> multiplier[n][x]
+	float gains[16][16];				//For each bus n, there are x inputs -> gains[n][x]
+	float outputGains[16];
+	int16_t integerMultipliers[16][16];	//Computed channel/bus gains with bus output gain mixed in
 	audio_block_t *inputQueueArray[16];
+	
 #endif
 };
 

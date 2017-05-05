@@ -128,7 +128,7 @@ void AudioMixerCrosspoint16::update(void)
 		if(out){
 			for (channel=0; channel < 16; channel++) {
 				if (in[channel]) {
-					applyGainThenAdd(out->data, in[channel]->data, multiplier[bus][channel]);	
+					applyGainThenAdd(out->data, in[channel]->data, integerMultipliers[bus][channel]);	
 				}
 			}
 			transmit(out, bus);
