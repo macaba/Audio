@@ -85,7 +85,6 @@ private:
 	//Transient variables
 	float currentGain;
 	float currentHoldTime;
-	void doAttack();
 };
 
 #endif
