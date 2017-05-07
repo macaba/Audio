@@ -1,13 +1,4 @@
-/* Audio Library for Teensy 3.X
- * Copyright (c) 2014, Paul Stoffregen, paul@pjrc.com
- *
- * Modified by Macaba
- *
- * Development of this audio library was funded by PJRC.COM, LLC by sales of
- * Teensy and Audio Adaptor boards.  Please support PJRC's efforts to develop
- * open source software by purchasing Teensy or other PJRC products.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
+/* Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
@@ -26,7 +17,7 @@
  * THE SOFTWARE.
  */
 
-#include "mixer_crosspoint_16.h"
+#include "effect_gate.h"
 #include "utility/dspinst.h"
 
 #if defined(KINETISK)
@@ -106,43 +97,77 @@ static void applyGainThenAdd(int16_t *dst, const int16_t *src, int32_t mult)
 
 #endif
 
-void AudioMixerCrosspoint16::update(void)
+void AudioEffectGate::update(void)
 {
-	audio_block_t *in[16], *out=NULL;
-	unsigned int channel;
-	unsigned int bus;
-	unsigned int sample;
+	audio_block_t *block;
+	uint32_t i;
+	int16_t maxAbsSample = 0;
+	bool processNextState = true;
+
+	block = receiveWritable();
+	if (!block) return;
+
+	for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
+		if(abs(block->data[i]) > maxAbsSample)
+			maxAbsSample = abs(block->data[i]);
+	}
 	
-	//First get audio_blocks to all the input channels as readonly. 
-	//Readonly because we'll be using them multiple times so don't want to modify contents.
-	for (channel=0; channel < 16; channel++) {
-		in[channel] = receiveReadOnly(channel);
+	while(processNextState){
+		processNextState = false;
+		switch (state) {
+			case S_Floor:
+				currentGain = floorGain;
+				if(maxAbsSample > thresholdLevelInt) {
+					state = S_Attack;
+					processNextState = true;
+				}					
+				break;
+			case S_Attack:
+				currentGain += attackTimeDelta;
+				if(currentGain >= 1.0f) {
+					currentGain = 1.0f;
+					state = S_Hold;
+					processNextState = true;
+				}
+				break;
+			case S_Hold:
+				currentGain = 1.0f;
+				if(maxAbsSample > thresholdLevelInt)
+					break;			//Re-triggered. Also prevents infinite loop.
+				currentHoldTime += holdTimeDelta;
+				if(currentHoldTime >= 1.0f) {
+					currentHoldTime = 0.0f;
+					state = S_Release;
+					processNextState = true;
+				}
+				break;
+			case S_Release:
+				if(maxAbsSample > thresholdLevelInt) {
+					state = S_Attack;
+					processNextState = true;
+					break;			//Re-triggered
+				}
+				currentGain -= releaseTimeDelta;
+				if(currentGain <= floorGain) {
+					currentGain = floorGain;
+					state = S_Floor;
+					processNextState = true;
+				}
+				break;
+		}
+	}
+	
+	if(currentGain != 1.0f){
+#if defined(KINETISK)
+		applyGain(block->data, currentGain * 65536.0f);
+#elif defined(KINETISL)
+		applyGain(block->data, currentGain * 256.0f);
+#endif
 	}
 
-	//Now crosspoint mix.
-	for(bus=0; bus < 16; bus++) {
-		out = allocate();		//get an audio_block that we'll sum the other channels to
-		for(sample=0; sample < AUDIO_BLOCK_SAMPLES; sample++){
-			out->data[sample] = 0;
-		}
-		//Using explicit loop instead of memset reduced CPU usage from 53% to 48.50%
-		//memset(out->data, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t)); 
-		if(out){
-			for (channel=0; channel < 16; channel++) {
-				if (in[channel]) {
-					applyGainThenAdd(out->data, in[channel]->data, integerMultipliers[bus][channel]);	
-				}
-			}
-			transmit(out, bus);
-			release(out);
-		}
-	}
-	
-	//Now release all the input audio_blocks
-	for (channel=0; channel < 16; channel++) {
-		if(in[channel])
-			release(in[channel]);
-	}
+	transmit(block);
+	release(block);
 }
+
 
 

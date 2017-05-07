@@ -390,6 +390,7 @@ span.mainfunction {color: #993300; font-weight: bolder}
 		{"type":"AudioEffectDelayExternal","data":{"defaults":{"name":{"value":"new"}},"shortName":"delayExt","inputs":1,"outputs":8,"category":"effect-function","color":"#E6E0F8","icon":"arrow-in.png"}},
 		{"type":"AudioEffectBitcrusher","data":{"shortName":"bitcrusher","inputs":1,"outputs":1,"category":"effect-function","color":"#E6E0F8","icon":"arrow-in.png"}},
 		{"type":"AudioEffectMidSide","data":{"shortName":"midside","inputs":2,"outputs":2,"category":"effect-function","color":"#E6E0F8","icon":"arrow-in.png"}},
+		{"type":"AudioEffectGate","data":{"defaults":{"name":{"value":"new"}},"shortName":"gate","inputs":1,"outputs":1,"category":"effect-function","color":"#E6E0F8","icon":"arrow-in.png"}},
 		{"type":"AudioFilterBiquad","data":{"defaults":{"name":{"value":"new"}},"shortName":"biquad","inputs":1,"outputs":1,"category":"filter-function","color":"#E6E0F8","icon":"arrow-in.png"}},
 		{"type":"AudioFilterFIR","data":{"defaults":{"name":{"value":"new"}},"shortName":"fir","inputs":1,"outputs":1,"category":"filter-function","color":"#E6E0F8","icon":"arrow-in.png"}},
 		{"type":"AudioFilterStateVariable","data":{"defaults":{"name":{"value":"new"}},"shortName":"filter","inputs":2,"outputs":3,"category":"filter-function","color":"#E6E0F8","icon":"arrow-in.png"}},
@@ -2764,6 +2765,43 @@ double s_freq = .0625;</p>
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
+</script>
+<script type="text/x-red" data-help-name="AudioEffectGate">
+	<h3>Summary</h3>
+	<div class=tooltipinfo>
+	<p>Allows a signal to pass through only when it is above a set threshold. Attack/hold/release/floor is adjustable.</p>
+	<p align=center><img src="img/gate.png"></p>
+	</div>
+	<h3>Audio Connections</h3>
+	<table class=doc align=center cellpadding=3>
+		<tr class=top><th>Port</th><th>Purpose</th></tr>
+		<tr class=odd><td align=center>In 0</td><td>Signal Input</td></tr>
+		<tr class=odd><td align=center>Out 0</td><td>Signal Output</td></tr>
+	</table>
+	<h3>Functions</h3>
+	<p class=func><span class=keyword>threshold</span>(level);</p>
+	<p class=desc>Threshold at which the gate triggered to allow audio through. 0.0 to 1.0 range. Default: 0.5.
+	</p>
+	<p class=func><span class=keyword>attack</span>(milliseconds);</p>
+	<p class=desc>When gate is triggered, initial fade in time for audio. Default: 50.0ms.
+	</p>
+	<p class=func><span class=keyword>hold</span>(milliseconds);</p>
+	<p class=desc>When gate is no longer triggered, time to hold gate open fully before starting release. Default: 200.0ms.
+	</p>
+	<p class=func><span class=keyword>release</span>(milliseconds);</p>
+	<p class=desc>Fade out time for audio after hold. Default: 200.0ms.
+	</p>
+	<p class=func><span class=keyword>floor</span>(gain);</p>
+	<p class=desc>Gain of audio when gate is closed. 0.0 to 1.0 range. Default: 0.0.
+	</p>
+	<!--
+<h3>Examples</h3>
+	<p class=exam>File &gt; Examples &gt; Audio &gt;
+	</p>
+-->
+	<h3>Notes</h3>
+	<p>If attack/hold/release is 0.0, gate will immediately start the next state.
+	</p>
 </script>
 
 <script type="text/x-red" data-help-name="AudioFilterBiquad">
