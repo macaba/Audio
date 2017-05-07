@@ -107,64 +107,66 @@ void AudioEffectGate::update(void)
 	block = receiveWritable();
 	if (!block) return;
 
-	for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
-		if(abs(block->data[i]) > maxAbsSample)
-			maxAbsSample = abs(block->data[i]);
-	}
-	
-	while(processNextState){
-		processNextState = false;
-		switch (state) {
-			case S_Floor:
-				currentGain = floorGain;
-				if(maxAbsSample > thresholdLevelInt) {
-					state = S_Attack;
-					processNextState = true;
-				}					
-				break;
-			case S_Attack:
-				currentGain += attackTimeDelta;
-				if(currentGain >= 1.0f) {
-					currentGain = 1.0f;
-					state = S_Hold;
-					processNextState = true;
-				}
-				break;
-			case S_Hold:
-				currentGain = 1.0f;
-				if(maxAbsSample > thresholdLevelInt)
-					break;			//Re-triggered. Also prevents infinite loop.
-				currentHoldTime += holdTimeDelta;
-				if(currentHoldTime >= 1.0f) {
-					currentHoldTime = 0.0f;
-					state = S_Release;
-					processNextState = true;
-				}
-				break;
-			case S_Release:
-				if(maxAbsSample > thresholdLevelInt) {
-					state = S_Attack;
-					processNextState = true;
-					break;			//Re-triggered
-				}
-				currentGain -= releaseTimeDelta;
-				if(currentGain <= floorGain) {
+	if(thresholdLevelInt > 0){		//Only process gate if threshold is non-zero
+		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
+			if(abs(block->data[i]) > maxAbsSample)
+				maxAbsSample = abs(block->data[i]);
+		}
+		
+		while(processNextState){
+			processNextState = false;
+			switch (state) {
+				case S_Floor:
 					currentGain = floorGain;
-					state = S_Floor;
-					processNextState = true;
-				}
-				break;
+					if(maxAbsSample > thresholdLevelInt) {
+						state = S_Attack;
+						processNextState = true;
+					}					
+					break;
+				case S_Attack:
+					currentGain += attackTimeDelta;
+					if(currentGain >= 1.0f) {
+						currentGain = 1.0f;
+						state = S_Hold;
+						processNextState = true;
+					}
+					break;
+				case S_Hold:
+					currentGain = 1.0f;
+					if(maxAbsSample > thresholdLevelInt)
+						break;			//Re-triggered. Also prevents infinite loop.
+					currentHoldTime += holdTimeDelta;
+					if(currentHoldTime >= 1.0f) {
+						currentHoldTime = 0.0f;
+						state = S_Release;
+						processNextState = true;
+					}
+					break;
+				case S_Release:
+					if(maxAbsSample > thresholdLevelInt) {
+						state = S_Attack;
+						processNextState = true;
+						break;			//Re-triggered
+					}
+					currentGain -= releaseTimeDelta;
+					if(currentGain <= floorGain) {
+						currentGain = floorGain;
+						state = S_Floor;
+						processNextState = true;
+					}
+					break;
+			}
+		}
+		
+		if(currentGain != 1.0f){
+#if defined(KINETISK)
+			applyGain(block->data, currentGain * 65536.0f);
+#elif defined(KINETISL)
+			applyGain(block->data, currentGain * 256.0f);
+#endif
 		}
 	}
 	
-	if(currentGain != 1.0f){
-#if defined(KINETISK)
-		applyGain(block->data, currentGain * 65536.0f);
-#elif defined(KINETISL)
-		applyGain(block->data, currentGain * 256.0f);
-#endif
-	}
-
 	transmit(block);
 	release(block);
 }
